@@ -26,7 +26,6 @@ class Art(db.Model):
     created = db.DateTimeProperty(auto_now_add = True)
 
 
-
 class MainPage(Handler):
     """ Handles requests coming in to '/'
     """
@@ -35,16 +34,13 @@ class MainPage(Handler):
         content = t.render()
         self.response.write(content)
 
-
-
-
 class NewPost(Handler):
     """ Handles requests coming in to '/newpost'
     """
     def render_front(self, title="", art="", error=""):
         arts = db.GqlQuery("SELECT * FROM Art ORDER BY created DESC")
 
-        self.render("newpost.html", title=title, art=art, error=error, arts=arts)
+        self.render("newpost.html", title=title, art=art, error=error)
 
     def get(self):
             self.render_front()
@@ -57,11 +53,11 @@ class NewPost(Handler):
             self.redirect("/blog")
             a = Art(title = title, art = art)
             a.put()
+
+            self.redirect("/blog/"+ str(a.key().id()))
         else:
             error = "we need both a title and a blog post!"
             self.render_front(title, art, error)
-
-
 
 class Blog(Handler):
     """ Handles requests coming in to '/blog'
@@ -74,10 +70,21 @@ class Blog(Handler):
         self.render_entries()
 
 
-
+class ViewPostHandler(Handler):
+    #handle viewing single post by entity id
+    def render_single_entry(self, id, title="", entry="", error=""):
+        single_entry = Art.get_by_id(int(id), parent=None)
+        self.render("indexed_blog.html", title=title, entry=entry, error=error, single_entry=single_entry)
+    def get(self, id):
+        if id:
+            self.render_single_entry(id)
+        else:
+            self.render_single_entry(id, title = "nothing here!",
+                        post = "there is no post with id "+ str(id))
 
 app = webapp2.WSGIApplication([
-    ('/blog', Blog),
     ('/', MainPage),
-    ('/newpost', NewPost)
+    ('/blog', Blog),
+    ('/newpost', NewPost),
+    webapp2.Route('/blog/<id:\d+>', ViewPostHandler),
 ], debug=True)
